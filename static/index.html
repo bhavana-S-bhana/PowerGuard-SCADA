@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerGuard SCADA - 24/7 Automation System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="scada-theme">
+    <!-- Main Application Wrapper -->
+    <div id="app" class="scada-container">
+        
+        <!-- Header Bar -->
+        <header class="scada-header">
+            <div class="header-left">
+                <div class="plant-badge">
+                    <span class="status-pulse active"></span>
+                    <span class="plant-name">POWER SCADA v2.4</span>
+                </div>
+                <h1 class="header-title">24/7 GENERATION & SUBSTATION CONTROL CENTER</h1>
+            </div>
+
+            <!-- Header Operational KPI Summary -->
+            <div class="header-kpis">
+                <div class="kpi-card">
+                    <span class="kpi-label">TOTAL GENERATION</span>
+                    <span class="kpi-val" id="kpi-mw">900 MW</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">GRID FREQ</span>
+                    <span class="kpi-val highlight" id="kpi-freq">50.00 Hz</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">ACTIVE ALARMS</span>
+                    <span class="kpi-val danger" id="kpi-alarms">0</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">SYSTEM UPTIME</span>
+                    <span class="kpi-val" id="kpi-uptime">00:00:00</span>
+                </div>
+            </div>
+
+            <!-- Header Right Controls -->
+            <div class="header-right">
+                <div class="ws-indicator" id="ws-indicator" title="WebSocket Connection Status">
+                    <span class="ws-dot"></span>
+                    <span class="ws-text" id="ws-status-text">CONNECTING</span>
+                </div>
+                
+                <button class="icon-btn" id="audio-toggle-btn" title="Toggle Alarm Chime Audio">
+                    <span id="audio-icon">🔊</span>
+                </button>
+
+                <div class="sim-toggle-wrapper">
+                    <label class="switch-label">SIMULATION</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="sim-toggle-checkbox" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs Bar -->
+        <nav class="scada-nav">
+            <button class="nav-tab active" data-tab="sld-view">
+                <span class="tab-icon">⚡</span> SINGLE-LINE SCHEMATIC
+            </button>
+            <button class="nav-tab" data-tab="inventory-view">
+                <span class="tab-icon">📋</span> TELEMETRY TAG INVENTORY
+            </button>
+            <button class="nav-tab" data-tab="alarms-view">
+                <span class="tab-icon">🚨</span> ALARM CONSOLE <span class="badge" id="nav-alarm-badge">0</span>
+            </button>
+            <button class="nav-tab" data-tab="audit-view">
+                <span class="tab-icon">📜</span> OPERATIONAL AUDIT TRAIL
+            </button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="scada-content">
+
+            <!-- TAB 1: SINGLE-LINE DIAGRAM SCHEMATIC -->
+            <section id="sld-view" class="tab-page active">
+                <div class="sld-panel">
+                    <div class="sld-header">
+                        <h2>SYNOPTIC SINGLE-LINE DIAGRAM (SLD)</h2>
+                        <span class="sld-hint">💡 Click any Breaker or Valve node to inspect state or initiate transactional manual override.</span>
+                    </div>
+
+                    <div class="sld-canvas">
+                        
+                        <!-- Generator Row -->
+                        <div class="sld-section-title">GENERATION BAY 400kV</div>
+                        <div class="sld-grid-row">
+
+                            <!-- Generator 1 Unit -->
+                            <div class="sld-unit generator-unit">
+                                <div class="unit-symbol generator-symbol" id="unit-g1">
+                                    <div class="rotor-icon">⚙️</div>
+                                    <div class="unit-tag">G-01</div>
+                                    <div class="unit-val">450 MW</div>
+                                </div>
+                                <div class="sld-wire vertical wire-active" id="wire-g1"></div>
+                                <div class="sld-node breaker-node" id="node-G1_CB" data-tagid="G1_CB">
+                                    <div class="node-state-indicator"></div>
+                                    <div class="node-label">G1_CB</div>
+                                    <div class="node-sub">Gen 1 Breaker</div>
+                                </div>
+                            </div>
+
+                            <!-- Step Up Transformer 1 -->
+                            <div class="sld-unit transformer-unit">
+                                <div class="unit-symbol tx-symbol">⚡ TR-01</div>
+                                <div class="sld-wire vertical wire-active" id="wire-tr1"></div>
+                                <div class="sld-node breaker-node" id="node-TR1_CB" data-tagid="TR1_CB">
+                                    <div class="node-state-indicator"></div>
+                                    <div class="node-label">TR1_CB</div>
+                                    <div class="node-sub">Tx 1 Breaker</div>
+                                </div>
+                            </div>
+
+                            <!-- Bus Tie Switch -->
+                            <div class="sld-unit tie-unit">
+                                <div class="busbar-horizontal" id="busbar-main">
+                                    <span class="busbar-title">MAIN SUBSTATION BUS 400kV</span>
+                                </div>
+                                <div class="sld-node breaker-node bus-tie-node" id="node-BUS_TIE_CB" data-tagid="BUS_TIE_CB">
+                                    <div class="node-state-indicator"></div>
+                                    <div class="node-label">BUS_TIE_CB</div>
+                                    <div class="node-sub">Substation Bus Tie</div>
+                                </div>
+                            </div>
+
+                            <!-- Step Up Transformer 2 -->
+                            <div class="sld-unit transformer-unit">
+                                <div class="unit-symbol tx-symbol">⚡ TR-02</div>
+                                <div class="sld-wire vertical" id="wire-tr2"></div>
+                                <div class="sld-node breaker-node" id="node-TR2_CB" data-tagid="TR2_CB">
+                                    <div class="node-state-indicator"></div>
+                                    <div class="node-label">TR2_CB</div>
+                                    <div class="node-sub">Tx 2 Breaker</div>
+                                </div>
+                            </div>
+
+                            <!-- Generator 2 Unit -->
+                            <div class="sld-unit generator-unit">
+                                <div class="unit-symbol generator-symbol" id="unit-g2">
+                                    <div class="rotor-icon">⚙️</div>
+                                    <div class="unit-tag">G-02</div>
+                                    <div class="unit-val">450 MW</div>
+                                </div>
+                                <div class="sld-wire vertical wire-active" id="wire-g2"></div>
+                                <div class="sld-node breaker-node" id="node-G2_CB" data-tagid="G2_CB">
+                                    <div class="node-state-indicator"></div>
+                                    <div class="node-label">G2_CB</div>
+                                    <div class="node-sub">Gen 2 Breaker</div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Valves & Auxiliary Row -->
+                        <div class="sld-section-title">THERMAL & AUXILIARY PLANT VALVES</div>
+                        <div class="sld-grid-row valves-row">
+
+                            <div class="sld-node valve-node" id="node-V_MAIN_STEAM" data-tagid="V_MAIN_STEAM">
+                                <div class="valve-icon">🚰</div>
+                                <div class="node-state-indicator"></div>
+                                <div class="node-label">V_MAIN_STEAM</div>
+                                <div class="node-sub">Main Steam Isolation</div>
+                            </div>
+
+                            <div class="sld-node valve-node" id="node-V_AUX_COOLING" data-tagid="V_AUX_COOLING">
+                                <div class="valve-icon">❄️</div>
+                                <div class="node-state-indicator"></div>
+                                <div class="node-label">V_AUX_COOLING</div>
+                                <div class="node-sub">Condenser Cooling</div>
+                            </div>
+
+                            <div class="sld-node valve-node" id="node-COOLING_PUMP_1" data-tagid="COOLING_PUMP_1">
+                                <div class="valve-icon">🌊</div>
+                                <div class="node-state-indicator"></div>
+                                <div class="node-label">COOLING_PUMP_1</div>
+                                <div class="node-sub">Feedwater Pump</div>
+                            </div>
+
+                            <div class="sld-node safety-node" id="node-ESD_RELAY" data-tagid="ESD_RELAY">
+                                <div class="safety-icon">🛑</div>
+                                <div class="node-state-indicator"></div>
+                                <div class="node-label">ESD_RELAY</div>
+                                <div class="node-sub">Emergency Trip</div>
+                            </div>
+
+                            <div class="sld-node safety-node" id="node-GRID_FREQ_RELAY" data-tagid="GRID_FREQ_RELAY">
+                                <div class="safety-icon">📡</div>
+                                <div class="node-state-indicator"></div>
+                                <div class="node-label">GRID_FREQ_RELAY</div>
+                                <div class="node-sub">Under-Freq Protection</div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: TELEMETRY TAG INVENTORY -->
+            <section id="inventory-view" class="tab-page">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h2>LIVE BINARY TELEMETRY TAGS</h2>
+                        <div class="search-box">
+                            <input type="text" id="tag-search-input" placeholder="🔍 Search tag ID, category or description...">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="scada-table" id="tags-table">
+                            <thead>
+                                <tr>
+                                    <th>TAG ID</th>
+                                    <th>DEVICE NAME</th>
+                                    <th>CATEGORY</th>
+                                    <th>STATE</th>
+                                    <th>TARGET</th>
+                                    <th>RISK LEVEL</th>
+                                    <th>PRIORITY</th>
+                                    <th>LAST UPDATED</th>
+                                    <th>ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tags-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: LIVE ALARM CONSOLE -->
+            <section id="alarms-view" class="tab-page">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h2>SCADA ALARM & EVENT CONSOLE</h2>
+                        <button class="btn btn-secondary" id="refresh-alarms-btn">🔄 Refresh History</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="scada-table" id="alarms-table">
+                            <thead>
+                                <tr>
+                                    <th>ALARM ID</th>
+                                    <th>TIMESTAMP</th>
+                                    <th>TAG ID</th>
+                                    <th>DEVICE NAME</th>
+                                    <th>SEVERITY</th>
+                                    <th>MESSAGE</th>
+                                    <th>TRANSITION</th>
+                                    <th>STATUS</th>
+                                    <th>ACK BY</th>
+                                    <th>ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alarms-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: OPERATIONAL AUDIT TRAIL -->
+            <section id="audit-view" class="tab-page">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h2>OPERATIONAL AUDIT & COMPLIANCE LOG</h2>
+                        <button class="btn btn-secondary" id="refresh-audit-btn">🔄 Refresh Logs</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="scada-table" id="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>AUDIT ID</th>
+                                    <th>TIMESTAMP</th>
+                                    <th>OPERATOR</th>
+                                    <th>ACTION TYPE</th>
+                                    <th>TAG ID</th>
+                                    <th>PREV VALUE</th>
+                                    <th>NEW VALUE</th>
+                                    <th>RATIONALE / DETAILS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+
+        <!-- REAL-TIME HIGH-PRIORITY POP-UP ALERT MODAL -->
+        <dialog id="alert-modal" class="scada-modal alert-modal">
+    <div class="modal-content alert-content">
+
+        <!-- Top bar with Close X -->
+        <div class="alert-modal-header">
+            <button
+                type="button"
+                class="alert-modal-close"
+                id="close-alert-modal"
+                aria-label="Close alert">
+                ×
+            </button>
+        </div>
+
+        <!-- Tag Name / ID -->
+        <div class="alert-detail">
+            <span class="detail-label">TAG NAME / ID</span>
+            <span class="detail-val highlight" id="modal-tag-id">
+                G1_CB
+            </span>
+        </div>
+
+        <!-- Reason / Alarm Message -->
+        <div class="alert-detail">
+            <span class="detail-label">REASON / ALARM MESSAGE</span>
+            <span class="detail-val message-box" id="modal-message">
+                Tag state toggled.
+            </span>
+        </div>
+
+    </div>
+</dialog>
+        
+
+        <!-- MANUAL OVERRIDE CONTROL MODAL -->
+        <dialog id="override-modal" class="scada-modal override-modal">
+            <div class="modal-content override-content">
+                <div class="modal-header">
+                    <h3>⚡ SCADA MANUAL OVERRIDE CONTROL</h3>
+                    <button class="close-btn" id="close-override-modal">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="override-info">
+                        <div class="override-row">
+                            <span class="label">EQUIPMENT TAG:</span>
+                            <span class="val highlight" id="override-tag-id">G1_CB</span>
+                        </div>
+                        <div class="override-row">
+                            <span class="label">NAME:</span>
+                            <span class="val" id="override-tag-name">Generator Unit 1 Breaker</span>
+                        </div>
+                        <div class="override-row">
+                            <span class="label">CURRENT STATE:</span>
+                            <span class="val" id="override-curr-state">CLOSED (1)</span>
+                        </div>
+                        <div class="override-row" id="high-risk-warning-row" style="display:none;">
+                            <span class="high-risk-badge">⚠️ HIGH RISK INDUSTRIAL EQUIPMENT</span>
+                            <p class="high-risk-desc">Modifying this breaker/valve will impact grid stability and triggers a mandatory SQLite audit transaction.</p>
+                        </div>
+                    </div>
+
+                    <form id="override-form">
+                        <div class="form-group">
+                            <label for="override-target-state">SELECT TARGET ACTION / STATE</label>
+                            <select id="override-target-state" class="scada-input">
+                                <option value="1">1 - CLOSE / ENERGIZE / OPEN VALVE</option>
+                                <option value="0">0 - OPEN / DE-ENERGIZE / CLOSE VALVE</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="override-operator">OPERATOR ID / STATION</label>
+                            <input type="text" id="override-operator" class="scada-input" value="OPERATOR_CTRL_01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="override-rationale">OPERATIONAL RATIONALE / WORK ORDER (MANDATORY FOR HIGH RISK)</label>
+                            <textarea id="override-rationale" class="scada-input" rows="3" placeholder="Enter engineering justification for state toggle..."></textarea>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-success btn-lg" id="submit-override-btn">
+                        ⚡ EXECUTE TRANSACTIONAL OVERRIDE
+                    </button>
+                    <button class="btn btn-secondary btn-lg" id="cancel-override-btn">
+                        CANCEL
+                    </button>
+                </div>
+            </div>
+        </dialog>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
