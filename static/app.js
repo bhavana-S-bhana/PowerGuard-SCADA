@@ -14,9 +14,8 @@
         currentSelectedTagId: null,
         simActive: true
     };
-
-    // DOM Elements
-    const elements = {
+// DOM Elements
+ const elements = {
         wsIndicator: document.getElementById('ws-indicator'),
         wsStatusText: document.getElementById('ws-status-text'),
         audioToggleBtn: document.getElementById('audio-toggle-btn'),
@@ -57,6 +56,125 @@
         cancelOverrideBtn: document.getElementById('cancel-override-btn'),
         closeOverrideModalBtn: document.getElementById('close-override-modal')
     };
+    const ALARM_GROUPS = {
+    "Generator System": [
+        "G1_CB",
+        "G2_CB",
+        "G3_CB",
+        "TEMP_BEARING_G1",
+        "TEMP_BEARING_G2",
+        "TEMP_STATOR_G1"
+    ],
+
+    "Transformer System": [
+        "TR1_CB",
+        "TR2_CB",
+        "TR3_CB",
+        "TEMP_TRANSFORMER_TR1"
+    ],
+
+    "Cooling System": [
+        "COOLING_PUMP_1",
+        "COOLING_PUMP_2",
+        "V_AUX_COOLING",
+        "TEMP_CONDENSER_EXHAUST",
+        "PRESS_VACUUM_TRIP"
+    ],
+
+    "Steam & Boiler System": [
+        "V_MAIN_STEAM",
+        "V_REHEAT_STEAM",
+        "PRESS_STEAM_DRUM_HI",
+        "V_DRAIN_VALVE"
+    ],
+
+    "Lube Oil System": [
+        "LUBE_OIL_PUMP_1",
+        "PRESS_LUBE_OIL_LOW"
+    ],
+
+    "Protection System": [
+        "ESD_RELAY",
+        "FIRE_SUPPRESSION_RELAY",
+        "GRID_FREQ_RELAY",
+        "OVERSPEED_TRIP_RELAY"
+    ],
+
+    "Switchyard System": [
+        "BUS_BAR_2_CB",
+        "BUS_TIE_CB",
+        "GRID_FEED_CB1",
+        "GRID_FEED_CB2"
+    ]
+};
+function getAlarmGroup(tagId) {
+    for (const [groupName, tags] of Object.entries(ALARM_GROUPS)) {
+        if (tags.includes(tagId)) {
+            return groupName;
+        }
+    }
+
+    return "Unknown System";
+}
+const tagAlertData = {};
+const tagFaultCounts = {};
+// Reset fault occurrence counts every 10 minutes
+// Fault evaluation window
+
+function getPriorityScore(priority) {
+    if (priority === "CRITICAL") return 2;
+    if (priority === "WARNING") return 1;
+    return 0;
+}
+function getHighestFaultTag(groupName) {
+    const tags = ALARM_GROUPS[groupName] || [];
+
+    let bestTag = null;
+
+    for (const tag of tags) {
+
+        // Ignore tags that have no active alert
+        if (!tagAlertData[tag]) {
+            continue;
+        }
+
+        // First fault becomes the initial best fault
+        if (!bestTag) {
+            bestTag = tag;
+            continue;
+        }
+
+        const currentAlert = tagAlertData[tag];
+        const bestAlert = tagAlertData[bestTag];
+
+        const currentPriority =
+            getPriorityScore(currentAlert.priority);
+
+        const bestPriority =
+            getPriorityScore(bestAlert.priority);
+
+        const currentFaults =
+            tagFaultCounts[tag] || 0;
+
+        const bestFaults =
+            tagFaultCounts[bestTag] || 0;
+
+        // 1. Priority has highest importance
+        if (currentPriority > bestPriority) {
+            bestTag = tag;
+        }
+
+        // 2. If priority is same, compare fault count
+        else if (
+            currentPriority === bestPriority &&
+            currentFaults > bestFaults
+        ) {
+            bestTag = tag;
+        }
+    }
+
+    return bestTag;
+}
 
     // Web Audio Synthesizer for Industrial Alarm Chime
     let audioCtx = null;
@@ -275,7 +393,7 @@
             message: payload.data ? payload.data.message : `Tag ${tagId} toggled state from ${prevState} -> ${currState}`
         });
     }
-
+    
     function onControlOverrideEvent(payload) {
         const tagId = payload.tag_id;
         const currState = payload.curr_state;
@@ -290,39 +408,147 @@
     }
 
     function triggerAlertModal(alert) {
-    const modal = document.getElementById('alert-modal');
-    const tagId = document.getElementById('modal-tag-id');
-    const message = document.getElementById('modal-message');
 
-    if (!modal) {
-        return;
+    // Find the alarm group
+    const groupName = getAlarmGroup(alert.tagId);
+
+    // Store latest alert information
+    tagAlertData[alert.tagId] = alert;
+
+    // Count fault occurrences
+    if (!tagFaultCounts[alert.tagId]) {
+        tagFaultCounts[alert.tagId] = 0;
     }
 
-    // Set Tag Name / ID
-    if (tagId) {
-        tagId.textContent =
-            alert.tagId ||
-            alert.tagName ||
-            alert.tag ||
-            'UNKNOWN TAG';
-    }
+    tagFaultCounts[alert.tagId]++;
 
-    // Set Reason / Alarm Message
-    if (message) {
-        message.textContent =
-            alert.message ||
-            alert.reason ||
-            alert.alarmMessage ||
-            'Telemetry alarm detected.';
-    }
+    // IMPORTANT:
+    // Do NOT create/update the group popup here.
+    // The popup will be evaluated every 10 minutes
+    // by evaluateFaults().
+    
+    console.log(
+        `[FAULT WINDOW] ${alert.tagId} recorded in ${groupName}. ` +
+        `Fault count: ${tagFaultCounts[alert.tagId]}`
+    );
+}
+function evaluateFaults() {
 
-    // Open modal
-    if (typeof modal.showModal === 'function') {
-        if (!modal.open) {
-            modal.showModal();
+    console.log("[FAULT WINDOW] Evaluating faults...");
+
+    for (const groupName in ALARM_GROUPS) {
+
+        // Find the most important fault in this group
+        const selectedTag = getHighestFaultTag(groupName);
+
+        // No fault in this group
+        if (!selectedTag) {
+            continue;
         }
+
+        const selectedAlert = tagAlertData[selectedTag];
+
+        // Find existing popup
+        const existingPopup = document.querySelector(
+            `.floating-alert-popup[data-group="${groupName}"]`
+        );
+
+        // If popup already exists, update it
+        if (existingPopup) {
+
+            const tagElement =
+                existingPopup.querySelector(".floating-alert-tag");
+
+            const priorityElement =
+                existingPopup.querySelector(".floating-alert-priority");
+
+            const messageElement =
+                existingPopup.querySelector(".floating-alert-message");
+
+            if (tagElement) {
+                tagElement.textContent = selectedTag;
+            }
+
+            if (priorityElement) {
+                priorityElement.textContent =
+                    selectedAlert.priority || "WARNING";
+            }
+
+            if (messageElement) {
+                messageElement.textContent =
+                    selectedAlert.message ||
+                    "Telemetry alarm detected.";
+            }
+
+            continue;
+        }
+
+        // Create popup
+        const popup = document.createElement("div");
+
+        popup.className = "floating-alert-popup";
+        popup.dataset.group = groupName;
+
+        popup.innerHTML = `
+            <div class="floating-alert-header">
+                <span>${groupName}</span>
+
+                <button class="floating-alert-close">×</button>
+            </div>
+
+            <div class="floating-alert-body">
+
+                <div class="floating-alert-tag">
+                    ${selectedTag}
+                </div>
+
+                <div class="floating-alert-priority">
+                    ${selectedAlert.priority || "WARNING"}
+                </div>
+
+                <div class="floating-alert-message">
+                    ${selectedAlert.message ||
+                    "Telemetry alarm detected."}
+                </div>
+
+            </div>
+        `;
+
+        // Find popup container
+        let alertContainer =
+            document.getElementById("floating-alert-container");
+
+        if (!alertContainer) {
+            alertContainer = document.createElement("div");
+            alertContainer.id = "floating-alert-container";
+            document.body.appendChild(alertContainer);
+        }
+
+        alertContainer.appendChild(popup);
+
+        // Close this popup
+        const closeButton =
+            popup.querySelector(".floating-alert-close");
+
+        closeButton.addEventListener("click", () => {
+            popup.remove();
+        });
     }
 }
+const FAULT_EVALUATION_INTERVAL = 10 * 60 * 1000;
+
+setInterval(() => {
+    console.log("[FAULT WINDOW] 10-minute evaluation started.");
+
+    evaluateFaults();
+
+    Object.keys(tagFaultCounts).forEach(tag => {
+        delete tagFaultCounts[tag];
+    });
+
+    console.log("[FAULT WINDOW] New 10-minute window started.");
+
+}, FAULT_EVALUATION_INTERVAL);
 
     function acknowledgeCurrentAlert() {
         if (!state.currentAlertAlarmId) {
