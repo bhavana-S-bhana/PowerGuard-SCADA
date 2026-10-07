@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -36,6 +37,7 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/alarms/history", a.handleAlarmHistory)
 	mux.HandleFunc("/api/audit", a.handleAuditLogs)
 	mux.HandleFunc("/api/simulation/toggle", a.handleToggleSimulation)
+	mux.HandleFunc("/api/qwen", a.handleQwen)
 }
 
 func sendJSON(w http.ResponseWriter, status int, data interface{}) {
@@ -316,4 +318,36 @@ func formatUptime(seconds int64) string {
 		return fmt.Sprintf("%dd %02dh %02dm %02ds", d, h, m, s)
 	}
 	return fmt.Sprintf("%02dh %02dm %02ds", h, m, s)
+}
+func (a *API) handleQwen(w http.ResponseWriter, r *http.Request) {
+	log.Println("[QWEN] Request received")
+	if r.Method != http.MethodPost {
+		sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		Prompt string `json:"prompt"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload")
+		return
+	}
+
+	if req.Prompt == "" {
+		sendError(w, http.StatusBadRequest, "Prompt is required")
+		return
+	}
+    log.Println("[QWEN] Sending request to Ollama")
+	answer, err := askQwen(req.Prompt)
+	log.Println("[QWEN] Ollama response received")
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	sendJSON(w, http.StatusOK, map[string]interface{}{
+		"answer": answer,
+	})
 }

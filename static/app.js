@@ -258,6 +258,74 @@ function getHighestFaultTag(groupName) {
                 if (tagId) openOverrideModal(tagId);
             });
         });
+     // AI Assistant - Ask Qwen
+document.getElementById('ask-qwen-btn').addEventListener('click', async () => {
+
+    const age = document.getElementById('ai-age').value;
+    const question = document.getElementById('ai-question').value;
+    const responseBox = document.getElementById('ai-response');
+
+    if (!age || !question.trim()) {
+        responseBox.textContent =
+            "Please enter your age and describe your issue.";
+        return;
+    }
+
+    responseBox.textContent = "Qwen is thinking...";
+
+    try {
+        const response = await fetch('/api/qwen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              prompt: `The user is ${age} years old.
+
+User's issue:
+${question}
+
+Give a clear and age-appropriate answer.
+
+IMPORTANT FORMAT RULES:
+- Do NOT use Markdown.
+- Do NOT use ###, **, *, or horizontal lines.
+- Keep the answer concise.
+- Use the following structure exactly:
+
+QUICK ANSWER:
+Give a short 1-2 sentence answer.
+
+HOW IT WORKS:
+1. Explain the first important point.
+2. Explain the second important point.
+3. Explain the third important point.
+
+IMPORTANT:
+1. Mention an important thing the user should know.
+2. Mention another important point if needed.
+
+REAL-LIFE EXAMPLE:
+Give one simple example.
+
+Adapt the explanation to a ${age}-year-old.`
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Qwen request failed");
+        }
+
+      responseBox.textContent = data.answer;
+
+    } catch (error) {
+        console.error("Qwen error:", error);
+        responseBox.textContent =
+            "Error connecting to Qwen: " + error.message;
+    }
+});   
     }
 
     function setupNavigation() {

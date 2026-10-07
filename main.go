@@ -81,7 +81,7 @@ func main() {
 	srv := &http.Server{
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		WriteTimeout: 120 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 

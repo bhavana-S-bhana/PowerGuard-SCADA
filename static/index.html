@@ -79,6 +79,9 @@
             <button class="nav-tab" data-tab="audit-view">
                 <span class="tab-icon">📜</span> OPERATIONAL AUDIT TRAIL
             </button>
+            <button class="nav-tab" data-tab="ai-view">
+    <span class="tab-icon">🤖</span> AI ASSISTANT
+</button>
         </nav>
 
         <!-- Main Content Area -->
@@ -300,6 +303,72 @@
                     </div>
                 </div>
             </section>
+            <!-- TAB 5: AI ASSISTANT -->
+<section id="ai-view" class="tab-page">
+
+    <div class="panel-card">
+
+        <div class="panel-header">
+            <h2>🤖 SCADA AI ASSISTANT</h2>
+        </div>
+
+        <div class="ai-assistant-container">
+
+            <div class="ai-input-group">
+
+                <label for="ai-age">
+                    YOUR AGE
+                </label>
+
+                <input
+                    type="number"
+                    id="ai-age"
+                    min="5"
+                    max="100"
+                    placeholder="Enter your age"
+                >
+
+            </div>
+
+            <div class="ai-input-group">
+
+                <label for="ai-question">
+                    DESCRIBE YOUR ISSUE
+                </label>
+
+                <textarea
+                    id="ai-question"
+                    rows="5"
+                    placeholder="Example: My generator bearing is overheating. What could be the problem?"
+                ></textarea>
+
+            </div>
+
+            <button
+                class="btn btn-primary"
+                id="ask-qwen-btn"
+            >
+                🤖 ASK QWEN
+            </button>
+
+            <div class="ai-response-container">
+
+                <h3>AI RESPONSE</h3>
+
+                <div
+                    id="ai-response"
+                    class="ai-response"
+                >
+                    Enter your issue and age, then ask Qwen.
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
 
         </main>
 
