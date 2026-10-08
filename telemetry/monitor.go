@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"sync"
 	"time"
-
 	"power-plant-scada/database"
 	"power-plant-scada/websocket"
 )
@@ -125,7 +124,26 @@ func (m *Monitor) checkStateChanges() {
 
 			log.Printf("[TELEMETRY ALERT] Instant Binary State Transition Detected on Tag '%s' (%s): %d -> %d [Priority: %s]",
 				dbTag.TagID, dbTag.Name, prevState, currState, dbTag.Priority)
+				if dbTag.Priority == "CRITICAL" && currState == 0 {
+    notificationMu.Lock()
+    delete(notifiedCriticalFaults, dbTag.TagID)
+    notificationMu.Unlock()
+}
+				if dbTag.Priority == "CRITICAL" {
 
+    notificationMu.Lock()
+
+    alreadyNotified := notifiedCriticalFaults[dbTag.TagID]
+
+    if !alreadyNotified {
+        notifiedCriticalFaults[dbTag.TagID] = true
+        notificationMu.Unlock()
+
+        go ShowSCADANotification()
+    } else {
+        notificationMu.Unlock()
+    }
+}
 			// Generate Alarm description
 			stateDesc := "CLOSED / ENERGIZED / ACTIVE / ALARM"
 			if currState == 0 {
@@ -144,7 +162,8 @@ func (m *Monitor) checkStateChanges() {
 				alarmID = alarm.ID
 			}
 
-			// Broadcast high-priority WebSocket event payload immediately
+			// Broadcast high-
+			// WebSocket event payload immediately
 			m.hub.Broadcast(websocket.EventPayload{
 				Type:      "BINARY_STATE_CHANGE",
 				TagID:     dbTag.TagID,

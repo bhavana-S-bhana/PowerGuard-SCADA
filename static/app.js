@@ -325,7 +325,8 @@ Adapt the explanation to a ${age}-year-old.`
         responseBox.textContent =
             "Error connecting to Qwen: " + error.message;
     }
-});   
+});  
+
     }
 
     function setupNavigation() {
@@ -476,7 +477,6 @@ Adapt the explanation to a ${age}-year-old.`
     }
 
     function triggerAlertModal(alert) {
-
     // Find the alarm group
     const groupName = getAlarmGroup(alert.tagId);
 
